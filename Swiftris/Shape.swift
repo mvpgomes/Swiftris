@@ -148,11 +148,35 @@ class Shape: Hashable, Printable {
         }
     }
     
+    final func rotateClockwise() {
+        let newOrientation = Orientation.rotate(orientation, clockwise: true)
+        rotateBlocks(newOrientation)
+        orientation = newOrientation
+    }
+    
+    final func rotateCounterClockwise() {
+        let newOrientation = Orientation.rotate(orientation, clockwise: false)
+        rotateBlocks(newOrientation)
+        orientation = newOrientation
+    }
+    
     /**
         - lowerShapeByOneRow : lower the shape by one row.
     */
     final func lowerShapeByOneRow() {
         shiftBy(0, rows:1)
+    }
+    
+    final func raiseShapeByOneRow() {
+        shiftBy(0, rows: -1)
+    }
+    
+    final func shiftRightByOneColumn() {
+        shiftBy(1, rows: 0)
+    }
+    
+    final func shiftLeftByOneColumn() {
+        shiftBy(-1, rows: 0)
     }
     
     /**
