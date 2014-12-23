@@ -66,7 +66,10 @@ class GameScene: SKScene {
         shapeLayer.position = LayerPosition
         shapeLayer.addChild(gameBoard)
         gameLayer.addChild(shapeLayer)
+        
+        runAction(SKAction.repeatActionForever(SKAction.playSoundFileNamed("theme.mp3", waitForCompletion: true)))
     }
+    
     /**
         - update: Called before each frame is rendered. 
     */
@@ -88,6 +91,10 @@ class GameScene: SKScene {
             */
             tick?()
         }
+    }
+    
+    func playSound(sound: String) {
+        runAction(SKAction.playSoundFileNamed(sound, waitForCompletion: false))
     }
     
     func startTicking() {
@@ -158,5 +165,51 @@ class GameScene: SKScene {
             sprite.runAction(moveToAction, completion: nil)
         }
         runAction(SKAction.waitForDuration(0.05), completion: completion)
+    }
+    
+    func animateCOllapsingLines(linesToRemove: Array<Array<Block>>, fallenBlocks: Array<Array<Block>>, completion:() -> ()) {
+        var longestDuration: NSTimeInterval = 0
+        
+        for (columnIdx, column) in enumerate(fallenBlocks) {
+            for (blockIdx, block) in enumerate(column) {
+                let newPostion = pointForColumn(block.column, row: block.row)
+                let sprite = block.sprite!
+                
+                let delay = (NSTimeInterval(columnIdx) * 0.05) + (NSTimeInterval(blockIdx) * 0.05)
+                let duration = NSTimeInterval(((sprite.position.y - newPostion.y) / BlockSize) * 0.1)
+                let moveAction = SKAction.moveTo(newPostion, duration: duration)
+                moveAction.timingMode = .EaseOut
+                sprite.runAction(SKAction.sequence([SKAction.waitForDuration(delay), moveAction]))
+                longestDuration = max(longestDuration, duration + delay)
+            }
+        }
+        
+        for (rowIdx, row) in enumerate(linesToRemove) {
+            for (blockIdx, block) in enumerate(row) {
+                let randomRadius = CGFloat(UInt(arc4random_uniform(400) + 100))
+                let goLeft = arc4random_uniform(100) % 2 == 0
+                
+                var point = pointForColumn(block.column, row: block.row)
+                point = CGPointMake(point.x + (goLeft ? -randomRadius : randomRadius), point.y)
+                
+                let randomDuration = NSTimeInterval(arc4random_uniform(2)) + 0.5
+                
+                var startAngle = CGFloat(M_PI)
+                var endAngle = startAngle * 2
+                if goLeft {
+                    endAngle = startAngle
+                    startAngle = 0
+                }
+                let archPath = UIBezierPath(arcCenter: point, radius: randomRadius, startAngle: startAngle, endAngle: endAngle, clockwise: goLeft)
+                let archAction = SKAction.followPath(archPath.CGPath, asOffset: false, orientToPath: true, duration: randomDuration)
+                archAction.timingMode = .EaseIn
+                let sprite = block.sprite!
+                
+                sprite.zPosition = 100
+                sprite.runAction(SKAction.sequence([SKAction.group([archAction, SKAction.fadeOutWithDuration(NSTimeInterval(randomDuration))]),
+                    SKAction.removeFromParent()]))
+            }
+        }
+        runAction(SKAction.waitForDuration(longestDuration), completion: completion)
     }
 }

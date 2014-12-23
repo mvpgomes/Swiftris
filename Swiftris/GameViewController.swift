@@ -15,6 +15,9 @@ class GameViewController: UIViewController, SwiftrisDelegate, UIGestureRecognize
     var swiftris: Swiftris!
     var panPointReference:CGPoint?
 
+    @IBOutlet weak var scoreLabel: UILabel!
+    @IBOutlet weak var levelLabel: UILabel!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -61,6 +64,27 @@ class GameViewController: UIViewController, SwiftrisDelegate, UIGestureRecognize
         }
     }
     
+    @IBAction func didSwipe(sender: UISwipeGestureRecognizer) {
+        swiftris.dropShape()
+    }
+    
+    func gestureRecognizer(gestureRecognizer: UIGestureRecognizer!, shouldRecognizeSimultaneouslyWithGestureRecognizer otherGestureRecognizer: UIGestureRecognizer!) -> Bool {
+        return true
+    }
+    
+    func gestureRecognizer(gestureRecognizer: UIGestureRecognizer!, shouldRequireFailureOfGestureRecognizer otherGestureRecognizer: UIGestureRecognizer!) -> Bool {
+        if let swipeRec = gestureRecognizer as? UISwipeGestureRecognizer {
+            if let panRec = otherGestureRecognizer as? UIPanGestureRecognizer {
+                return true
+            }
+        } else if let panRec = gestureRecognizer as? UIPanGestureRecognizer {
+            if let tapRec = otherGestureRecognizer as? UITapGestureRecognizer {
+                return true
+            }
+        }
+        return false
+    }
+    
     func didTick() {
         swiftris.letShapeFall()
     }
@@ -77,6 +101,10 @@ class GameViewController: UIViewController, SwiftrisDelegate, UIGestureRecognize
     }
     
     func gameDidBegin(swiftris: Swiftris) {
+        levelLabel.text = "\(swiftris.level)"
+        scoreLabel.text = "\(swiftris.score)"
+        scene.tickLengthMillis = TickLengthLevelOne
+        
         // The following is false when restarting a new game
         if swiftris.nextShape != nil && swiftris.nextShape!.blocks[0].sprite == nil {
             scene.addPreviewShapeToScene(swiftris.nextShape!) {
@@ -93,16 +121,37 @@ class GameViewController: UIViewController, SwiftrisDelegate, UIGestureRecognize
     }
     
     func gameDidLevelUp(swiftris: Swiftris) {
-        
+        levelLabel.text = "\(swiftris.level)"
+        if scene.tickLengthMillis >= 100 {
+            scene.tickLengthMillis -= 100
+        } else if scene.tickLengthMillis > 50 {
+            scene.tickLengthMillis -= 50
+        }
+        scene.playSound("levelup.mp3")
     }
     
     func gameShapeDidDrop(swiftris: Swiftris) {
-        
+        scene.stopTicking()
+        scene.redrawShape(swiftris.fallingShape!) {
+            swiftris.letShapeFall()
+        }
+        scene.playSound("drop.mp3")
     }
     
     func gameShapeDidLand(swiftris: Swiftris) {
         scene.stopTicking()
-        nextShape()
+        self.view.userInteractionEnabled = false
+        
+        let removedLines = swiftris.removeCompletedLines()
+        if removedLines.linesRemoved.count > 0 {
+            self.scoreLabel.text = "\(swiftris.score)"
+            scene.animateCOllapsingLines(removedLines.linesRemoved, fallenBlocks: removedLines.fallenBlocks) {
+                self.gameShapeDidLand(swiftris)
+            }
+            scene.playSound("bomb.mp3")
+        } else {
+            nextShape()
+        }
     }
     
     func gameShapeDidMove(swiftris: Swiftris) {
